@@ -1,0 +1,49 @@
+Output:
+  name: "Output"
+  meta:
+  inputs:
+  - name: "Texture"
+    type: Texture
+  outputs:
+Input:
+  name: "Input"
+  meta:
+  inputs:
+  outputs:
+  - name: "Size"
+    type: Vec2
+Value:
+  name: "Value"
+  meta:
+  - name: "Value"
+    type: !Simple Scalar
+  inputs:
+  outputs:
+  - name: "Out"
+    type: Scalar
+ChannelSplit:
+  name: "Channel Split"
+  meta:
+  inputs:
+  - name: "In"
+    type: Vec3
+  outputs:
+  - name: "X"
+    type: Scalar
+  - name: "Y"
+    type: Scalar
+  - name: "Z"
+    type: Scalar
+ChannelJoin:
+  name: "Channel Join"
+  meta:
+  inputs:
+  - name: "X"
+    type: Scalar
+  - name: "Y"
+    type: Scalar
+  - name: "Z"
+    type: Scalar
+  outputs:
+  - name: "Out"
+    type: Vec3
