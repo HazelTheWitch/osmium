@@ -1,6 +1,8 @@
-Output:
-  name: "Output"
+Save:
+  name: "Save Texture"
   meta:
+  - name: "Save Path"
+    type: FilePath
   inputs:
   - name: "Texture"
     type: Texture

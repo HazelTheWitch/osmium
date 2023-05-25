@@ -5,8 +5,8 @@ use serde_json::Value;
 pub struct NodeType {
     pub name: String,
     pub meta: Vec<MetaInfo>,
-    pub inputs: Vec<SlotInfo>,
-    pub outputs: Vec<SlotInfo>,
+    pub inputs: Vec<InputInfo>,
+    pub outputs: Vec<OutputInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -20,14 +20,22 @@ pub struct MetaInfo {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MetaType {
     Simple(DataType),
+    FilePath,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SlotInfo {
+pub struct InputInfo {
     pub name: String,
     #[serde(rename = "type")]
     pub data_type: DataType,
     pub default_value: Option<Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OutputInfo {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub data_type: DataType,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]

@@ -11,9 +11,6 @@ use crate::exec::GraphContext;
 
 use super::types::{NodeType, DataType};
 
-pub static OUTPUT: &str = "_output";
-pub static INPUT: &str = "_input";
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Graph {
     pub nodes: HashMap<ArcIntern<String>, Node>,
@@ -48,9 +45,11 @@ pub struct NodeAddress {
     pub slot: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FinalizedGraph<'nodes> {
+    #[serde(flatten)]
     pub(crate) graph: Graph,
+    #[serde(skip, default = "super::get_nodes")]
     pub(crate) node_types: &'nodes HashMap<ArcIntern<String>, NodeType>,
 }
 
@@ -99,12 +98,7 @@ impl Default for Graph {
 
 impl Graph {
     pub fn new() -> Self {
-        let mut graph: Graph = Default::default();
-
-        graph.nodes.insert(ArcIntern::<String>::from_ref(INPUT), Node { node_type: ArcIntern::<String>::from_ref("Input"), meta: vec![], inputs: vec![] });
-        graph.nodes.insert(ArcIntern::<String>::from_ref(OUTPUT), Node { node_type: ArcIntern::<String>::from_ref("Output"), meta: vec![], inputs: vec![SlotValue::None] });
-
-        graph
+        Default::default()
     }
 
     pub fn insert(&mut self, node: impl Into<String>, meta: Vec<Value>, inputs: Vec<SlotValue>) -> ArcIntern<String> {

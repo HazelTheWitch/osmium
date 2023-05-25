@@ -6,10 +6,11 @@ use thiserror::Error;
 
 use crate::graph::concrete::{FinalizedGraph, SlotValue, broadcast, SlotType, BroadcastingError};
 
-use self::{passthrough::passthrough, input::node_info};
+use self::{passthrough::passthrough, input::node_info, save::save_texture};
 
 mod passthrough;
 mod input;
+mod save;
 
 pub struct GraphContext {
     pub dimensions: (usize, usize),
@@ -25,11 +26,16 @@ pub enum ExecutionError {
     ValueError,
     #[error("broadcasting error")]
     BroadcastingError(#[from] BroadcastingError),
+    #[error("error (de)serializing values")]
+    JSONError(#[from] serde_json::Error),
+    #[error("error processing image")]
+    ImageError(#[from] image::ImageError),
 }
 
 pub fn execute(node_type: ArcIntern<String>, meta: &[Value], inputs: &[Value], ctx: &GraphContext) -> Result<Vec<Value>, ExecutionError> {
     match node_type.as_str() {
-        "Output" | "Value" => Ok(passthrough(meta, inputs)),
+        "Value" => Ok(passthrough(meta, inputs)),
+        "Save" => save_texture(meta, inputs, ctx),
         "Input" => Ok(node_info(ctx)),
         _ => Err(ExecutionError::UnknownNode(node_type)),
     }
