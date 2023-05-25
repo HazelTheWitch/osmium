@@ -4,12 +4,12 @@ use internment::ArcIntern;
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::graph::concrete::{FinalizedGraph, SlotValue, broadcast, SlotType, BroadcastingError};
+use crate::graph::concrete::{broadcast, BroadcastingError, FinalizedGraph, SlotType, SlotValue};
 
-use self::{passthrough::passthrough, input::node_info, save::save_texture};
+use self::{input::node_info, passthrough::passthrough, save::save_texture};
 
-mod passthrough;
 mod input;
+mod passthrough;
 mod save;
 
 pub struct GraphContext {
@@ -32,7 +32,12 @@ pub enum ExecutionError {
     ImageError(#[from] image::ImageError),
 }
 
-pub fn execute(node_type: ArcIntern<String>, meta: &[Value], inputs: &[Value], ctx: &GraphContext) -> Result<Vec<Value>, ExecutionError> {
+pub fn execute(
+    node_type: ArcIntern<String>,
+    meta: &[Value],
+    inputs: &[Value],
+    ctx: &GraphContext,
+) -> Result<Vec<Value>, ExecutionError> {
     match node_type.as_str() {
         "Value" => Ok(passthrough(meta, inputs)),
         "Save" => save_texture(meta, inputs, ctx),
@@ -41,7 +46,12 @@ pub fn execute(node_type: ArcIntern<String>, meta: &[Value], inputs: &[Value], c
     }
 }
 
-fn solve_for(node_id: ArcIntern<String>, graph: &FinalizedGraph, ctx: &GraphContext, cache: &mut HashMap<ArcIntern<String>, Vec<Value>>) -> Result<Vec<Value>, ExecutionError> {
+fn solve_for(
+    node_id: ArcIntern<String>,
+    graph: &FinalizedGraph,
+    ctx: &GraphContext,
+    cache: &mut HashMap<ArcIntern<String>, Vec<Value>>,
+) -> Result<Vec<Value>, ExecutionError> {
     if let Some(outputs) = cache.get(&node_id) {
         return Ok(outputs.clone());
     }
@@ -72,7 +82,7 @@ fn solve_for(node_id: ArcIntern<String>, graph: &FinalizedGraph, ctx: &GraphCont
                 };
 
                 inputs.push(broadcast(value, &output_type, &input_type, ctx)?);
-            },
+            }
             SlotValue::Value(v) => inputs.push(v.clone()),
             SlotValue::None => return Err(ExecutionError::DisconnectedSlot(index)),
         }
@@ -85,7 +95,10 @@ fn solve_for(node_id: ArcIntern<String>, graph: &FinalizedGraph, ctx: &GraphCont
     Ok(outputs)
 }
 
-pub fn run(graph: FinalizedGraph, ctx: GraphContext) -> Result<HashMap<ArcIntern<String>, Vec<Value>>, ExecutionError> {
+pub fn run(
+    graph: FinalizedGraph,
+    ctx: GraphContext,
+) -> Result<HashMap<ArcIntern<String>, Vec<Value>>, ExecutionError> {
     let mut cache: HashMap<ArcIntern<String>, Vec<Value>> = HashMap::new();
 
     for (node, _) in graph.nodes.iter() {
@@ -106,17 +119,33 @@ mod tests {
     fn passthrough() {
         let meta = vec![json! { 12 }];
         let inputs = vec![json! { 24 }];
-        let result = execute(ArcIntern::<String>::from_ref("Output"), &meta, &inputs, &super::GraphContext { dimensions: (16, 16) }).unwrap();
+        let result = execute(
+            ArcIntern::<String>::from_ref("Output"),
+            &meta,
+            &inputs,
+            &super::GraphContext {
+                dimensions: (16, 16),
+            },
+        )
+        .unwrap();
 
         assert_eq!(result, vec![json! { 12 }, json! { 24 }]);
     }
 
     #[test]
     fn node_info() {
-        let graph_info = super::GraphContext { dimensions: (16, 16) };
+        let graph_info = super::GraphContext {
+            dimensions: (16, 16),
+        };
         let meta = vec![];
         let inputs = vec![];
-        let result = execute(ArcIntern::<String>::from_ref("Input"), &meta, &inputs, &graph_info).unwrap();
+        let result = execute(
+            ArcIntern::<String>::from_ref("Input"),
+            &meta,
+            &inputs,
+            &graph_info,
+        )
+        .unwrap();
 
         assert_eq!(result, vec![json! { [16, 16] }]);
     }

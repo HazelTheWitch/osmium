@@ -1,6 +1,12 @@
 use internment::ArcIntern;
 use once_cell::sync::Lazy;
-use osmium::{graph::{concrete::{Graph, SlotValue}, NODES}, exec::run};
+use osmium::{
+    exec::run,
+    graph::{
+        concrete::{Graph, SlotValue},
+        NODES,
+    },
+};
 use serde_json::json;
 
 fn main() {
@@ -13,7 +19,15 @@ fn main() {
 
     let final_graph = graph.finalize(&Lazy::force(&NODES)).unwrap();
 
-    let results = run(final_graph, osmium::exec::GraphContext { dimensions: (64, 64) }).unwrap();
+    println!("{}", serde_yaml::to_string(&final_graph).unwrap());
 
-    println!("{results:#?}")
+    let results = run(
+        final_graph,
+        osmium::exec::GraphContext {
+            dimensions: (64, 64),
+        },
+    )
+    .unwrap();
+
+    // println!("{results:#?}")
 }

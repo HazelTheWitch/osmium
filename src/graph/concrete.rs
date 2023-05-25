@@ -1,15 +1,19 @@
 use std::{collections::HashMap, ops::Deref};
 
-use rand::{SeedableRng, rngs::SmallRng, distributions::{Alphanumeric, DistString}};
-use serde::{Serialize, Deserialize};
-use serde_json::{Value, from_value, json};
-use thiserror::Error;
+use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine};
 use internment::ArcIntern;
-use base64::{Engine, engine::general_purpose::STANDARD_NO_PAD};
+use rand::{
+    distributions::{Alphanumeric, DistString},
+    rngs::SmallRng,
+    SeedableRng,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::{from_value, json, Value};
+use thiserror::Error;
 
 use crate::exec::GraphContext;
 
-use super::types::{NodeType, DataType};
+use super::types::{DataType, NodeType};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Graph {
@@ -78,7 +82,7 @@ pub enum GraphError {
     InvalidSlots,
 }
 
-impl <'nodes> Deref for FinalizedGraph<'nodes> {
+impl<'nodes> Deref for FinalizedGraph<'nodes> {
     type Target = Graph;
 
     fn deref(&self) -> &Self::Target {
@@ -101,7 +105,12 @@ impl Graph {
         Default::default()
     }
 
-    pub fn insert(&mut self, node: impl Into<String>, meta: Vec<Value>, inputs: Vec<SlotValue>) -> ArcIntern<String> {
+    pub fn insert(
+        &mut self,
+        node: impl Into<String>,
+        meta: Vec<Value>,
+        inputs: Vec<SlotValue>,
+    ) -> ArcIntern<String> {
         let mut key;
 
         loop {
@@ -123,7 +132,13 @@ impl Graph {
         key
     }
 
-    pub fn connect(&mut self, output_node: ArcIntern<String>, out_slot: usize, input_node: ArcIntern<String>, input_slot: usize) -> bool {
+    pub fn connect(
+        &mut self,
+        output_node: ArcIntern<String>,
+        out_slot: usize,
+        input_node: ArcIntern<String>,
+        input_slot: usize,
+    ) -> bool {
         let output = NodeAddress {
             node: output_node.clone(),
             slot: out_slot,
@@ -134,12 +149,12 @@ impl Graph {
             slot: input_slot,
         };
 
-        let connection = Connection {
-            input,
-            output,
-        };
+        let connection = Connection { input, output };
 
-        if self.connections.contains(&connection) || !self.nodes.contains_key(&output_node) || !self.nodes.contains_key(&input_node) {
+        if self.connections.contains(&connection)
+            || !self.nodes.contains_key(&output_node)
+            || !self.nodes.contains_key(&input_node)
+        {
             return false;
         }
 
@@ -159,17 +174,15 @@ impl Graph {
     }
 
     pub fn slot_connected_from(&self, node: ArcIntern<String>, slot: usize) -> Option<&Connection> {
-        let input = NodeAddress {
-            node,
-            slot,
-        };
+        let input = NodeAddress { node, slot };
 
-        self.connections
-            .iter()
-            .find(|c| c.input == input)
+        self.connections.iter().find(|c| c.input == input)
     }
 
-    pub fn finalize(self, nodes: &HashMap<ArcIntern<String>, NodeType>) -> Result<FinalizedGraph, GraphError> {
+    pub fn finalize(
+        self,
+        nodes: &HashMap<ArcIntern<String>, NodeType>,
+    ) -> Result<FinalizedGraph, GraphError> {
         let mut dependency_graph = petgraph::Graph::<ArcIntern<String>, ()>::new();
         let mut addresses = HashMap::new();
 
@@ -212,7 +225,11 @@ impl Graph {
                 return Err(GraphError::InvalidSlots);
             }
 
-            dependency_graph.add_edge(*addresses.get(&connection.input.node).unwrap(), *addresses.get(&connection.output.node).unwrap(), ());
+            dependency_graph.add_edge(
+                *addresses.get(&connection.input.node).unwrap(),
+                *addresses.get(&connection.output.node).unwrap(),
+                (),
+            );
         }
 
         if petgraph::algo::is_cyclic_directed(&dependency_graph) {
@@ -247,7 +264,12 @@ pub enum BroadcastingError {
     InvalidValue(#[from] serde_json::Error),
 }
 
-pub fn broadcast(value: Value, from: &DataType, to: &DataType, ctx: &GraphContext) -> Result<Value, BroadcastingError> {
+pub fn broadcast(
+    value: Value,
+    from: &DataType,
+    to: &DataType,
+    ctx: &GraphContext,
+) -> Result<Value, BroadcastingError> {
     if !DataType::broadcasts(from, to) {
         return Err(BroadcastingError::CanNotBroadcast(*from, *to));
     }
@@ -269,17 +291,23 @@ pub fn broadcast(value: Value, from: &DataType, to: &DataType, ctx: &GraphContex
                 DataType::Vec3 => json! { [value, value, value] },
                 DataType::Color => json! { [as_u8, as_u8, as_u8, 255] },
                 DataType::Texture => {
-                    let data = STANDARD_NO_PAD.encode([as_u8, as_u8, as_u8, 255].repeat(image_size));
+                    let data =
+                        STANDARD_NO_PAD.encode([as_u8, as_u8, as_u8, 255].repeat(image_size));
 
                     json! { data }
-                },
-                _ => unreachable!()
+                }
+                _ => unreachable!(),
             }
-        },
+        }
         (DataType::Vec3, DataType::Color | DataType::Texture) => {
             let color_f64: (f64, f64, f64) = from_value(value)?;
 
-            let color = [(255.0 * color_f64.0) as u8, (255.0 * color_f64.1) as u8, (255.0 * color_f64.2) as u8, 255];
+            let color = [
+                (255.0 * color_f64.0) as u8,
+                (255.0 * color_f64.1) as u8,
+                (255.0 * color_f64.2) as u8,
+                255,
+            ];
 
             match to {
                 DataType::Color => json! { color },
@@ -287,27 +315,28 @@ pub fn broadcast(value: Value, from: &DataType, to: &DataType, ctx: &GraphContex
                     let data = STANDARD_NO_PAD.encode(color.repeat(image_size));
 
                     json! { data }
-                },
+                }
                 _ => unreachable!(),
             }
-        },
+        }
         (DataType::Color, DataType::Vec3 | DataType::Texture) => {
             let color: [u8; 4] = from_value(value)?;
 
             match to {
                 DataType::Vec3 => {
-                    let vec3: Vec<f64> = color.iter().map(|c| (*c as f64) / 255.0).take(3).collect();
+                    let vec3: Vec<f64> =
+                        color.iter().map(|c| (*c as f64) / 255.0).take(3).collect();
 
                     json! { vec3 }
-                },
+                }
                 DataType::Texture => {
                     let data = STANDARD_NO_PAD.encode(color.repeat(image_size));
 
                     json! { data }
-                },
+                }
                 _ => unreachable!(),
             }
-        },
+        }
         _ => unreachable!(),
     })
 }
