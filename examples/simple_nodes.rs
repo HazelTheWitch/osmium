@@ -1,4 +1,3 @@
-use internment::ArcIntern;
 use once_cell::sync::Lazy;
 use osmium::{
     exec::run,
@@ -19,8 +18,6 @@ fn main() {
 
     let final_graph = graph.finalize(&Lazy::force(&NODES)).unwrap();
 
-    println!("{}", serde_yaml::to_string(&final_graph).unwrap());
-
     let results = run(
         final_graph,
         osmium::exec::GraphContext {
@@ -28,6 +25,4 @@ fn main() {
         },
     )
     .unwrap();
-
-    // println!("{results:#?}")
 }
